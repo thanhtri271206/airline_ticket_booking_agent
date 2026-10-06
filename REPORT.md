@@ -1,5 +1,5 @@
 # BÁO CÁO KHOA HỌC BÀI TẬP VỀ NHÀ SỐ 03 (BTVN#3)
-# XÂY DỰNG AGENT ĐẶT VÉ MÁY BAY TÍCH HỢP HỆ THỐNG 4 LỚP HARNESS VÀ 3 MẪU THIẾT KẾ SUY LUẬN
+# XÂY DỰNG HỆ THỐNG AGENT ĐẶT VÉ MÁY BAY TÍCH HỢP 4 LỚP HARNESS VÀ SO SÁNH THỰC NGHIỆM 3 MẪU THIẾT KẾ SUY LUẬN BẰNG LANGCHAIN
 
 > **TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN – ĐHQG TP. HỒ CHÍ MINH (UIT)**  
 > **KHOA CÔNG NGHỆ PHẦN MỀM**  
@@ -14,386 +14,242 @@
 ## MỤC LỤC
 
 1. [TỔNG QUAN YÊU CẦU & BÀI TOÁN NGHIỆP VỤ](#1-tổng-quan-yêu-cầu--bài-toán-nghiệp-vụ)
-2. [RANH GIỚI KIẾN TRÚC: MODEL VS. HARNESS](#2-ranh-giới-kiến-trúc-model-vs-harness)
+2. [KIẾN TRÚC HỆ THỐNG VÀ LUỒNG VẬN HÀNH TỔNG THỂ](#2-kiến-trúc-hệ-thống-và-luồng-vận-hành-tổng-thể)
 3. [THIẾT KẾ VÀ CÀI ĐẶT 4 LỚP HARNESS CHUYÊN SÂU](#3-thiết-kế-và-cài-đặt-4-lớp-harness-chuyên-sâu)
-   - 3.1. Lớp 1: Ràng buộc là dữ liệu (Constraint-as-Data)
-   - 3.2. Lớp 2: Tiêu chí hoàn thành kiểm bằng code (Computational Sensor)
+   - 3.1. Lớp 1: Ràng buộc là dữ liệu bất biến (Constraint-as-Data)
+   - 3.2. Lớp 2: Tiêu chí hoàn thành kiểm chứng bằng code (Computational Sensor)
    - 3.3. Lớp 3: Kiểm quyền trước khi thực thi (Pre-execution Authorization Guardrail)
-   - 3.4. Lớp 4: Phát hiện lặp & Bàn giao chuẩn 4 trường (Loop Detection & Handoff)
-4. [CÀI ĐẶT 3 MẪU THIẾT KẾ SUY LUẬN (REASONING PATTERNS)](#4-cài-đặt-3-mẫu-thiết-kế-suy-luận-reasoning-patterns)
+   - 3.4. Lớp 4: Phát hiện lặp & Bàn giao chuẩn hóa (Loop Detection & Handoff)
+4. [CÀI ĐẶT 3 MẪU THIẾT KẾ SUY LUẬN TRÊN LANGCHAIN](#4-cài-đặt-3-mẫu-thiết-kế-suy-luận-trên-langchain)
    - 4.1. Mẫu 1: ReAct Agent (Reasoning + Acting)
-   - 4.2. Mẫu 2: Plan-then-Execute Agent (Lập kế hoạch trước, thực thi tuần tự)
-   - 4.3. Mẫu 3: Mẫu Lai (Hybrid Agent / ReAct + Dynamic Re-planning)
-5. [KẾT QUẢ THỰC NGHIỆM VÀ BENCHMARK ĐỊNH LƯỢNG](#5-kết-quả-thực-nghiệm-và-benchmark-định-lượng)
-   - 5.1. Thiết kế bộ 4 Test Cases chuẩn hóa
-   - 5.2. Bảng tổng hợp so sánh các chỉ tiêu khoa học
-   - 5.3. Ma trận chi tiết kết quả thực nghiệm (Detailed Matrix)
-   - 5.4. Phân tích chuyên sâu các đánh đổi (Trade-offs Analysis)
-6. [CÁC THÁCH THỨC KỸ THUẬT & GIẢI PHÁP ĐỘT PHÁ](#6-các-thách-thức-kỹ-thuật--giải-pháp-đột-phá)
-   - 6.1. Bảo toàn `thought_signature` với Google Gemini OpenAI-compatible endpoint
-   - 6.2. Cơ chế Resilient Backoff kiểm soát Rate Limit (15 RPM)
-7. [HƯỚNG DẪN CÀI ĐẶT & TÁI HIỆN KẾT QUẢ (REPRODUCTION GUIDE)](#7-hướng-dẫn-cài-đặt--tái-hiện-kết-quả-reproduction-guide)
-8. [KẾT LUẬN](#8-kết-luận)
+   - 4.2. Mẫu 2: Plan-then-Execute Agent (Kế hoạch tĩnh, thực thi tuần tự)
+   - 4.3. Mẫu 3: Hybrid Agent (Lai: Kế hoạch khung + Dynamic Re-planning)
+5. [HỆ THỐNG ĐÁNH GIÁ THỰC NGHIỆM VÀ BENCHMARK ĐỊNH LƯỢNG](#5-hệ-thống-đánh-giá-thực-nghiệm-và-benchmark-định-lượng)
+   - 5.1. Định nghĩa chuẩn hóa các chỉ số đo lường (Evaluation Metrics)
+   - 5.2. Thiết kế bộ 4 Test Cases chuẩn hóa bao quát các tình huống biên
+   - 5.3. Bảng tổng hợp so sánh các chỉ số định lượng
+   - 5.4. Ma trận chi tiết kết quả thực nghiệm 12 lượt chạy
+   - 5.5. Phân tích chuyên sâu các đánh đổi kỹ thuật (Trade-offs Analysis)
+6. [KẾT LUẬN & GIỚI HẠN THỰC NGHIỆM](#6-kết-luận--giới-hạn-thực-nghiệm)
 
 ---
 
 ## 1. TỔNG QUAN YÊU CẦU & BÀI TOÁN NGHIỆP VỤ
 
-Trong công nghệ Agentic AI, **AI Agent** được định nghĩa là phần mềm có khả năng tự chủ hoạt động, đưa ra quyết định để đạt mục tiêu mà không cần con người can thiệp liên tục (*Slide 4*). Công thức nền tảng của một Agent hoàn chỉnh được xác lập bởi:
+Trong kỹ thuật phần mềm Agentic AI, một AI Agent được định nghĩa là một thực thể phần mềm có khả năng tự chủ hoạt động, tiếp nhận mục tiêu cấp cao từ người dùng, tương tác với môi trường thông qua các công cụ lập trình và liên tục lặp lại chu trình suy luận để giải quyết bài toán mà không đòi hỏi sự can thiệp vi mô liên tục của con người. Về mặt toán học và cấu trúc, một Agent hoàn chỉnh được mô hình hóa bởi bốn thành tố nền tảng:
 
 $$\text{Agent} = \text{Goal} + \text{Tools} + \text{Loop} + \text{Termination}$$
 
-Bài tập BTVN#3 đặt ra bài toán thực tế: **Xây dựng Agent tự động tìm kiếm, giữ chỗ và thanh toán vé máy bay** đáp ứng nghiêm ngặt các ràng buộc của khách hàng, đồng thời đối mặt với các tình huống biên (Edge Cases) thường gặp trong thế giới thực:
-1. **Chuyến bay rẻ nhất bị hết chỗ (`available_seats = 0`)**: Đòi hỏi Agent phải nhận biết sự thay đổi của môi trường và đổi hướng thông minh, không được phép đâm đầu vào ngõ cụt.
-2. **Chuyến bay có giá rẻ nhưng không hoàn hủy (`refundable = False`)**: Đòi hỏi hệ thống phải kiểm soát an toàn tài chính, không tự ý trừ tiền của người dùng khi chưa có phê duyệt của con người (*Human-in-the-loop*).
-3. **Chuyến bay vượt ngân sách hoặc sai buổi/ngày bay**: Thử thách khả năng bám sát mục tiêu ban đầu, chống hiện tượng trôi mục tiêu (*Goal Drift*).
-4. **Yêu cầu bất khả thi (ngân sách dưới mức tối thiểu)**: Thử thách khả năng phát hiện bế tắc, tránh lặp vô tận (*Infinite Loop*) và bàn giao công việc văn minh cho con người.
+Trong đó, Goal đại diện cho yêu cầu nghiệp vụ cần đạt được xác lập cùng các ràng buộc dữ liệu cụ thể. Tools là tập hợp các giao diện lập trình ứng dụng cho phép Agent truy vấn cơ sở dữ liệu, giữ chỗ và khởi tạo thanh toán. Loop là vòng lặp khép kín tiếp nhận thông tin quan sát từ môi trường, suy luận hành động kế tiếp và thực thi công cụ. Cuối cùng, Termination là cơ chế dừng xác định dựa trên tiêu chí hoàn thành khách quan hoặc điều kiện cắt lỗ an toàn khi phát hiện bế tắc.
+
+Bài tập BTVN#3 đặt ra bài toán thực tế là xây dựng hệ thống Agent tự động tìm kiếm, giữ chỗ và thanh toán vé máy bay phục vụ chuyến công tác của doanh nghiệp. Khác với các kịch bản trình diễn đơn giản trên môi trường giả lập lý tưởng, một hệ thống nghiệp vụ thực tế luôn phải đối mặt với nhiều tình huống biên phức tạp. Điển hình trong số đó là biến cố cạn kiệt tài nguyên khi chuyến bay có mức giá rẻ nhất bị hết chỗ (`available_seats = 0`), đòi hỏi Agent phải nhận biết sự thay đổi của môi trường để đổi hướng linh hoạt thay vì đâm đầu vào ngõ cụt. Bên cạnh đó, hệ thống phải kiểm soát an toàn tài chính nghiêm ngặt khi chuyến bay không được phép hoàn hủy (`refundable = False`) hoặc giá vé vượt trần ngân sách cho phép tự duyệt của tổ chức, bắt buộc phải tạm dừng để xin phê duyệt của con người (*Human-in-the-loop*). Ngoài ra, khi ngữ cảnh hội thoại kéo dài qua nhiều lượt suy luận, mô hình ngôn ngữ lớn rất dễ gặp hiện tượng trôi mục tiêu (*Goal Drift*), dẫn tới nguy cơ đặt vé sai ngày bay hoặc vượt quá hạn mức ngân sách. Cuối cùng, khi người dùng đưa ra một yêu cầu bất khả thi về mặt kinh tế, hệ thống phải có khả năng tự nhận biết bài toán vô nghiệm, chủ động cắt lỗ để tránh vòng lặp vô tận và xuất báo cáo bàn giao minh bạch cho con người tiếp quản.
 
 ---
 
-## 2. RANH GIỚI KIẾN TRÚC: MODEL VS. HARNESS
+## 2. KIẾN TRÚC HỆ THỐNG VÀ LUỒNG VẬN HÀNH TỔNG THỂ
 
-Một trong những bài học cốt lõi nhất của môn học SE373 (*Slide 10, 11*) là **sự phân định ranh giới rành mạch giữa Model và Harness**:
+Nguyên lý cốt lõi của hệ thống là sự phân định ranh giới độc lập giữa Foundation Model và Lớp vỏ kiểm soát (Harness). Trong khi Foundation Model (trên nền tảng LangChain) chỉ đảm nhiệm vai trò suy luận ngôn ngữ xác suất để đề xuất công cụ (`tool_calls`), thì Harness là lớp mã nguồn Python tất định bao bọc toàn bộ chu trình sống của Agent nhằm ngăn chặn ảo giác, bảo đảm tính bất biến của dữ liệu và loại trừ rủi ro tài chính.
 
-```
-+──────────────────────────────────────────────────────────────────────────────+
-|                       HỆ THỐNG KIỂM SOÁT AGENT (HARNESS)                     |
-|                                                                              |
-|  [01. Dựng ngữ cảnh] ───────► (Gửi Prompt & Tools)                           |
-|         ▲                               │                                    |
-|         │                               ▼                                    |
-|  [05. Xét điều kiện dừng]      +─────────────────+                           |
-|         ▲                      |  FOUNDATION LLM |                           |
-|         │                      | (Google Gemini) | ──► Sinh tool_calls đề xuất|
-|  [04. Ghi kết quả DB]          +─────────────────+          │                |
-|         ▲                                                   │                |
-|         │               (Lớp 3 Guardrail chặn & duyệt)     ▼                |
-|  [03. Harness gọi Tool] ◄───────────────────────────────────+                |
-|                                                                              |
-+──────────────────────────────────────────────────────────────────────────────+
-```
+![Kiến trúc hệ thống và luồng kiểm soát 4 lớp Harness](assets/architecture_flow.png)
 
-- **Foundation Model (LLM)**: Chỉ đảm nhiệm duy nhất một chức năng: Đọc ngữ cảnh và đề xuất bước hành động tiếp theo (`tool_calls`) hoặc câu trả lời. Model **không trực tiếp thao tác Database**, **không tự quyết định việc dừng an toàn**, và **không thể tin cậy tuyệt đối** vào lời tự tuyên bố của nó.
-- **Lớp Vỏ Kiểm Soát (Harness)**: Là 100% mã nguồn Python do lập trình viên thiết kế và kiểm soát:
-  - Chuẩn bị dữ liệu và prompt chống trôi (`Constraint-as-Data`).
-  - Kiểm tra quyền hạn trước khi cho phép gọi tool (`Pre-execution Guardrail`).
-  - Thực thi tool nội bộ an toàn và ghi nhận observation chuẩn hóa dạng JSON (*Slide 13*).
-  - Độc lập kiểm tra điều kiện hoàn thành thông qua cơ sở dữ liệu (`Computational Sensor`).
-  - Bắt các vòng lặp bất thường và sinh báo cáo bàn giao chuẩn 4 trường cho con người (`LoopDetector & Handoff`).
+*Hình 1: Sơ đồ kiến trúc tổng thể và luồng vận hành khép kín của hệ thống Agent tích hợp 4 Lớp Harness.*
+
+Toàn bộ chu trình vận hành trên sơ đồ tạo thành một quy trình khép kín với các chốt chặn nghiêm ngặt. Khi tiếp nhận yêu cầu từ người dùng, Lớp 1 (Constraint-as-Data) trước tiên đóng gói ngân sách và tiêu chí bay vào cấu trúc dữ liệu bất biến trước khi nạp vào LLM. Nếu mô hình đề xuất gọi công cụ, lệnh này bắt buộc phải đi qua chốt chặn Lớp 3 (Pre-execution Authorization Guardrail) để thẩm định quyền hạn (chính sách hoàn vé và trần tự duyệt chi tiêu), chuyển sang xin ý kiến con người nếu vượt quyền. Sau khi công cụ thực thi trên cơ sở dữ liệu nội bộ, Lớp 4 (Loop Detection) lập tức rà soát nguy cơ lặp hoặc dậm chân tại chỗ để xuất gói bàn giao chuẩn 4 trường (Handoff Report) cắt lỗ kịp thời. Ở nhánh vận hành bình thường, Lớp 2 (Computational Sensor) độc lập truy vấn trực tiếp cơ sở dữ liệu để xác nhận vé đã được xác nhận và thanh toán thành công (`confirmed` và `paid`), từ đó công nhận hoàn thành nhiệm vụ (Goal Achieved) hoặc đưa kết quả quan sát ngược lại lịch sử để mô hình tiếp tục vòng lặp suy luận kế tiếp.
 
 ---
 
 ## 3. THIẾT KẾ VÀ CÀI ĐẶT 4 LỚP HARNESS CHUYÊN SÂU
 
-Trong file [`lib/harness.py`](file:///c:/Users/ADMIN/uit/SE373_Agentic/Buoi_3/airline_ticket_booking_agent/lib/harness.py), chúng tôi cài đặt trọn vẹn 4 lớp kiểm soát theo đúng chuẩn kiến trúc được giảng dạy:
+Trong module `lib/harness.py`, hệ thống hiện thực hóa đầy đủ bốn lớp bảo vệ theo mô hình kiểm soát đa tầng nhằm triệt tiêu các rủi ro vận hành của mô hình ngôn ngữ lớn.
 
-### 3.1. Lớp 1: Ràng buộc là dữ liệu (Constraint-as-Data) · Slide 60, 62
-- **Vấn đề giải quyết**: Khi chuỗi hội thoại của Agent dài ra qua nhiều lượt lặp (ReAct turns hoặc Re-plan), ngữ cảnh phình to làm phát sinh hiện tượng **Goal Drift** (Agent bị "say thuốc", quên mất trần ngân sách hoặc yêu cầu buổi bay ban đầu của khách).
-- **Cài đặt kỹ thuật**: Đóng gói toàn bộ tiêu chí của người dùng vào một cấu trúc dữ liệu bất biến (immutable dataclass `frozen=True`):
-  ```python
-  @dataclass(frozen=True)
-  class BookingConstraints:
-      origin: str               # vd: 'SGN'
-      destination: str          # vd: 'DAD'
-      date: str                 # vd: '2026-10-07'
-      time_slot: Optional[str]  # 'morning', 'afternoon', 'evening'
-      max_price: int            # Ngân sách trần (VNĐ)
-      passenger_name: str       # Tên khách hàng
-      passenger_id: str         # CCCD / Mã định danh
-      auto_approval_limit: int  # Hạn mức tự duyệt (VNĐ)
-  ```
-- **Hàm thẩm định logic (`validate_flight_constraints`)**: Chạy hoàn toàn bằng code Python thuần (0 token, 0 ms) để thẩm định từng chuyến bay dựa trên 5 chiều dữ liệu (Chặng bay, Ngày bay, Buổi bay, Trần ngân sách, Số ghế trống thực tế).
+### 3.1. Lớp 1: Ràng buộc là dữ liệu bất biến (Constraint-as-Data)
 
-### 3.2. Lớp 2: Tiêu chí hoàn thành kiểm bằng code (Computational Sensor) · Slide 43, 44
-- **Vấn đề giải quyết**: Nếu Agent tự sinh câu trả lời: *"Tôi đã đặt và thanh toán vé thành công cho bạn rồi nhé!"* (Sensor Inferential dựa trên LLM), câu trả lời này hoàn toàn có thể là ảo giác (*hallucination*).
-- **Cài đặt kỹ thuật**: Hàm `is_goal_achieved(booking_code, constraints, bookings_db)` truy vấn trực tiếp vào bản ghi trạng thái trong Cơ sở dữ liệu:
-  1. `booking_code` phải tồn tại trong Database thực tế.
-  2. `status == 'confirmed'` (đã xác nhận giữ chỗ thành công).
-  3. `paid == True` (đã ghi nhận giao dịch thanh toán thành công).
-  4. `total_price <= constraints.max_price` (không vi phạm ngân sách).
-  5. `date == constraints.date` và `time_slot == constraints.time_slot` (khớp chính xác lịch trình).
-- **Ưu điểm**: Khách quan 100%, thực thi tức thời trong mili-giây, độc lập tuyệt đối với model LLM.
+Khi chuỗi hội thoại của Agent kéo dài qua nhiều lượt suy luận, dung lượng ngữ cảnh phình to thường khiến mô hình ngôn ngữ lớn bị phân tán sự chú ý, dẫn tới hiện tượng trôi mục tiêu (Goal Drift). Khi đó, Agent có xu hướng bỏ quên các điều kiện tiên quyết như trần ngân sách hoặc khung giờ bay mong muốn của khách hàng.
 
-### 3.3. Lớp 3: Kiểm quyền trước khi thực thi (Pre-execution Authorization Guardrail) · Slide 41, 504
-- **Vấn đề giải quyết**: Ngăn chặn rủi ro tài chính không thể cứu vãn trước khi tool nhạy cảm được gọi. Ví dụ: khi Agent cố tình gọi `book_seat` cho vé không hoàn tiền (`refundable == False`) hoặc gọi `pay` với số tiền vượt quá hạn mức công ty cho phép tự duyệt.
-- **Cài đặt kỹ thuật**: Hàm `check_authorization` can thiệp **TRƯỚC** khi lệnh tool được gửi đi:
-  ```python
-  def check_authorization(tool_name, tool_args, constraints, ...):
-      if tool_name == "book_seat":
-          if not flight["refundable"]:
-              return False, "Cần phê duyệt: Vé không hoàn hủy!", ApprovalRequest(...)
-          if total_price > constraints.auto_approval_limit:
-              return False, "Cần phê duyệt: Vượt hạn mức chi tiêu!", ApprovalRequest(...)
-      elif tool_name == "pay" and amount > constraints.auto_approval_limit:
-          return False, "Cần phê duyệt thanh toán lớn!", ApprovalRequest(...)
-      return True, None, None
-  ```
-- **Cơ chế Human-in-the-loop**: Khi phát hiện rủi ro, Harness tạm ngưng thực thi, tạo phiếu `ApprovalRequest` và kích hoạt hàm callback xin ý kiến người dùng. Nếu người dùng từ chối, Harness nạp thông điệp phản hồi `rejected_by_human` vào observation để Agent buộc phải tìm giải pháp an toàn khác.
+Để loại bỏ rủi ro này, toàn bộ tiêu chí của người dùng được đóng gói vào một cấu trúc dữ liệu bất biến bằng cách sử dụng `@dataclass(frozen=True)` trong Python. Đối tượng `BookingConstraints` chứa các trường thông tin cốt lõi bao gồm điểm khởi hành, điểm đến, ngày bay, khung giờ bay, giá vé trần, thông tin khách hàng và hạn mức tự động duyệt chi phí. Cấu trúc bất biến này ngăn chặn hoàn toàn việc mô hình ngôn ngữ hoặc bất kỳ hàm nội bộ nào tự ý ghi đè hay thay đổi các điều kiện cốt lõi trong suốt quá trình chạy.
 
-### 3.4. Lớp 4: Phát hiện lặp & Bàn giao chuẩn 4 trường (Loop Detection & Handoff) · Slide 45, 48
-- **Vấn đề giải quyết**: Agent rơi vào bế tắc (Stall) hoặc lặp vô tận (gọi đi gọi lại cùng một tool hoặc cùng một tham số khi chuyến bay hết chỗ).
-- **Bộ phát hiện lặp `LoopDetector`**: Giám sát liên tục 3 tín hiệu toán học:
-  1. *Trùng Action*: Cùng bộ tham số `(tool, args)` xuất hiện quá $k$ lần trong cửa sổ trượt $W$ vòng gần nhất.
-  2. *Trùng Observation*: Các lần gọi khác nhau nhưng trả về nội dung quan sát giống hệt nhau quá $k_{obs}$ lần.
-  3. *Không tiến triển (Stall)*: Đại lượng tiến độ bài toán không thay đổi qua $N$ vòng liên tiếp.
-- **Cơ chế bàn giao chuẩn 4 trường (`ban_giao`)**: Khi dừng bất thường hoặc bế tắc, Agent không được "chết im lặng" (*silent crash*), mà phải bàn giao đầy đủ cho con người có thể nắm bắt và can thiệp trong vòng 30 giây:
-  1. `stop_reason`: Lý do dừng cụ thể (vòng lặp, hết ngân sách, bị từ chối phê duyệt).
-  2. `da_thu`: Danh sách các hành động và tham số mà Agent đã thử nghiệm.
-  3. `trang_thai`: Ảnh chụp trạng thái hiện tại (mã đặt chỗ, context dữ liệu).
-  4. `cau_hoi_cho_nguoi`: Câu hỏi trực tiếp, rõ ràng để con người ra quyết định.
+```python
+@dataclass(frozen=True)
+class BookingConstraints:
+    origin: str
+    destination: str
+    date: str
+    time_slot: Optional[str]
+    max_price: int
+    passenger_name: str
+    passenger_id: str
+    auto_approval_limit: int
+```
+
+Đi kèm với cấu trúc dữ liệu này là hàm logic kiểm định tiền thực thi `validate_flight_constraints`. Hàm này hoạt động hoàn toàn bằng mã nguồn Python thuần túy mà không tiêu tốn bất kỳ token nào, chịu trách nhiệm đối soát chuyến bay tiềm năng trên cả năm chiều thông tin gồm hành trình, ngày bay, buổi bay, trần ngân sách và số ghế trống thực tế. Mọi dữ liệu định danh khách hàng trong mock database đều là thông tin giả lập nhằm đảm bảo an toàn dữ liệu trong môi trường thử nghiệm.
+
+### 3.2. Lớp 2: Tiêu chí hoàn thành kiểm chứng bằng code (Computational Sensor)
+
+Một trong những sai lầm phổ biến trong các hệ thống Agent sơ khai là sử dụng cơ chế cảm biến suy diễn (Inferential Sensor), tức là hoàn toàn tin tưởng vào câu trả lời tự tuyên bố của LLM để kết luận tác vụ đã hoàn thành. Trong thực tế, mô hình có thể gặp ảo giác và khẳng định đã mua vé thành công dù giao dịch thanh toán chưa từng được kích hoạt.
+
+Hệ thống giải quyết triệt để vấn đề này bằng việc xây dựng cảm biến điện toán khách quan (Computational Sensor) thông qua hàm `is_goal_achieved`. Hàm này bỏ qua toàn bộ văn bản phản hồi của mô hình và tiến hành truy vấn trực tiếp vào bảng ghi trạng thái của cơ sở dữ liệu nghiệp vụ để kiểm tra năm điều kiện tiên quyết: mã đặt chỗ phải thực sự tồn tại, trạng thái vé phải chuyển sang `confirmed`, giao dịch tài chính phải được ghi nhận `paid == True`, tổng chi phí thực tế không vượt trần ngân sách của khách hàng, và thời gian bay phải trùng khớp hoàn toàn với ràng buộc ban đầu.
+
+Đặc biệt, hệ thống phân biệt rạch ròi giữa hai trạng thái nghiệp vụ: trạng thái giữ chỗ (`booking_confirmed`) và trạng thái hoàn tất thanh toán (`payment_confirmed`). Nếu chuyến bay mới chỉ dừng lại ở bước giữ chỗ mà chưa phát sinh giao dịch thanh toán thành công, Computational Sensor sẽ kiên quyết từ chối công nhận hoàn thành nhiệm vụ, ngăn chặn hoàn toàn việc báo cáo sai lệch tiến độ.
+
+### 3.3. Lớp 3: Kiểm quyền trước khi thực thi (Pre-execution Authorization Guardrail)
+
+Để ngăn chặn các tổn thất tài chính không thể phục hồi, hệ thống thiết lập cơ chế kiểm quyền can thiệp ngay trước thời điểm công cụ được thực thi (Pre-execution Interception). Nếu Agent tự ý lựa chọn một chuyến bay không hoàn hủy (`refundable == False`) hoặc khởi tạo lệnh thanh toán vượt hạn mức tự duyệt của doanh nghiệp, lệnh gọi công cụ đó sẽ bị chặn lại ngay lập tức.
+
+Hàm `check_authorization` tiếp nhận tên công cụ, tham số dự kiến và đối tượng ràng buộc để đánh giá mức độ rủi ro. Khi phát hiện hành vi vượt quyền, hàm sẽ trả về trạng thái từ chối cùng một phiếu yêu cầu phê duyệt `ApprovalRequest` chứa đầy đủ lý do kỹ thuật và thông số giao dịch.
+
+```python
+def check_authorization(tool_name: str, tool_args: dict, constraints: BookingConstraints):
+    if tool_name == "book_seat":
+        flight = FLIGHTS_DATA.get(tool_args.get("flight_code"))
+        if not flight.get("refundable", False):
+            return False, "Cần phê duyệt: Vé không hoàn hủy!", ApprovalRequest(...)
+        if flight.get("total_price", 0) > constraints.auto_approval_limit:
+            return False, "Cần phê duyệt: Giá vé vượt hạn mức tự động duyệt!", ApprovalRequest(...)
+    elif tool_name == "pay":
+        if tool_args.get("amount", 0) > constraints.auto_approval_limit:
+            return False, "Cần phê duyệt thanh toán lớn vượt trần tự duyệt!", ApprovalRequest(...)
+    return True, "", None
+```
+
+Cơ chế này tích hợp quy trình Human-in-the-loop một cách tự nhiên. Khi phiếu duyệt được tạo ra, hệ thống tạm dừng chu trình suy luận và kích hoạt hàm callback để xin ý kiến của người giám sát. Nếu người duyệt chấp thuận, lệnh gọi công cụ sẽ tiếp tục được chuyển tới hệ thống backend. Ngược lại, nếu người duyệt từ chối, Harness sẽ đóng gói lý do từ chối vào kết quả quan sát (`rejected_by_human`), buộc mô hình phải tiếp nhận phản hồi tiêu cực này để tìm kiếm giải pháp an toàn khác.
+
+### 3.4. Lớp 4: Phát hiện lặp & Bàn giao chuẩn hóa (Loop Detection & Handoff)
+
+Khi Agent đối mặt với môi trường bất lợi hoặc các yêu cầu không thể đáp ứng, mô hình ngôn ngữ rất dễ rơi vào trạng thái bế tắc hoặc lặp vô tận, liên tục gọi đi gọi lại cùng một lệnh tìm kiếm với các tham số tương tự. Hiện tượng này làm tiêu tốn tài nguyên tính toán, gây nghẽn hạn ngạch API và tạo ra trải nghiệm tồi tệ cho người dùng.
+
+Để ngăn chặn tình trạng này, bộ phát hiện lặp `LoopDetector` được tích hợp để giám sát hành vi của Agent dựa trên các ngưỡng định lượng rõ ràng. Ngưỡng lặp hành động ($repeat\_k = 2$) sẽ kích hoạt báo động nếu một công cụ với cùng bộ tham số được gọi lại lần thứ hai trong cửa sổ trượt gồm sáu bước gần nhất. Ngưỡng dậm chân tại chỗ ($stall\_n = 4$) sẽ cảnh báo nếu sau bốn vòng liên tiếp hệ thống không ghi nhận bất kỳ tiến triển nghiệp vụ nào. Đồng thời, hệ thống áp đặt trần ngân sách tối đa với tám lượt suy luận cho ReAct và ba lần tái lập kế hoạch cho mô hình lai.
+
+Khi các ngưỡng an toàn bị chạm tới, Agent không được phép dừng lại một cách đột ngột trong im lặng (silent crash), mà bắt buộc phải khởi tạo gói báo cáo bàn giao chuẩn bốn trường thông qua hàm `ban_giao`. Gói bàn giao này bao gồm lý do dừng cụ thể (`stop_reason`), danh sách toàn bộ các hành động mà Agent đã thử nghiệm (`da_thu`), ảnh chụp trạng thái hiện tại của hệ thống (`trang_thai`), và câu hỏi trực diện giúp người giám sát có thể tiếp quản nhiệm vụ trong vòng ba mươi giây (`cau_hoi_cho_nguoi`).
 
 ---
 
-## 4. CÀI ĐẶT 3 MẪU THIẾT KẾ SUY LUẬN (REASONING PATTERNS)
+## 4. CÀI ĐẶT 3 MẪU THIẾT KẾ SUY LUẬN TRÊN LANGCHAIN
 
-Dự án cài đặt đầy đủ và độc lập 3 mẫu thiết kế đại diện cho các trường phái suy luận khác nhau trong Agentic Engineering:
+Dự án cài đặt độc lập ba mẫu thiết kế suy luận đại diện cho các trường phái kiến trúc khác nhau trong kỹ thuật xây dựng Agentic AI, sử dụng thư viện LangChain (`langchain-openai`, `langchain-core`) để chuẩn hóa việc kết nối mô hình và quản lý công cụ.
+
+```
+                        BA MẪU THIẾT KẾ AGENT SUY LUẬN
+ ┌─────────────────────────┬─────────────────────────┬─────────────────────────┐
+ │     1. REACT AGENT      │ 2. PLAN-THEN-EXECUTE    │     3. HYBRID AGENT     │
+ ├─────────────────────────┼─────────────────────────┼─────────────────────────┤
+ │ • Vòng lặp từng bước    │ • Lập kế hoạch 1 lần    │ • Lập kế hoạch khung    │
+ │ • Thought-Action-Obs    │ • Thực thi tuần tự code │ • Thực thi tuần tự      │
+ │ • Cực kỳ linh hoạt      │ • Tiết kiệm LLM calls   │ • Re-plan khi có biến cố│
+ │ • Tốn nhiều token       │ • Dễ gãy (Brittleness)  │ • Cân bằng tối ưu       │
+ └─────────────────────────┴─────────────────────────┴─────────────────────────┘
+```
 
 ### 4.1. Mẫu 1: ReAct Agent (Reasoning + Acting)
-- **Cơ sở khoa học**: Dựa trên công trình của Yao và cộng sự (2022) (*Slide 18, 19*).
-- **Chu trình thực thi**:
-  $$\text{Context} \longrightarrow \text{Thought (Suy luận)} \longrightarrow \text{Action (Gọi Tool)} \longrightarrow \text{Observation (Quan sát)} \longrightarrow \text{Lặp lại...}$$
-- **Đặc điểm cài đặt trong [`lib/agents/react_agent.py`](file:///c:/Users/ADMIN/uit/SE373_Agentic/Buoi_3/airline_ticket_booking_agent/lib/agents/react_agent.py)**:
-  - Agent đọc phản hồi từ môi trường sau mỗi bước.
-  - Tự do quyết định số bước và thứ tự tool dựa trên dữ liệu nhận được.
-  - Bọc hoàn toàn bởi Lớp 3 (Guardrail) trước mỗi Action và Lớp 2 (Sensor) + Lớp 4 (LoopDetector) sau mỗi Action.
-- **Ưu điểm**: Cực kỳ linh hoạt, tự xoay sở tốt khi môi trường biến động bất ngờ.
-- **Nhược điểm**: Tiêu tốn nhiều lượt gọi LLM nhất; chi phí token tăng theo bình phương số vòng lặp (*Slide 14*).
 
-### 4.2. Mẫu 2: Plan-then-Execute Agent (Lập kế hoạch trước, thực thi tuần tự)
-- **Cơ sở khoa học**: Slide 22, 23. Tách biệt hoàn toàn giữa hai pha: **Planning** (Lập kế hoạch) và **Execution** (Thực thi).
-- **Chu trình thực thi**:
-  1. **Phase 1 (Planning)**: Gọi Model đúng 1 lần với prompt chuyên biệt để sinh ra bản kế hoạch tuần tự cấu trúc JSON gồm đúng 4 bước logic:
-     - `Bước 1`: `search_flights`
-     - `Bước 2`: `check_seat` (với tham số động `$BEST_FLIGHT`)
-     - `Bước 3`: `book_seat` (với thông tin hành khách)
-     - `Bước 4`: `pay` (với `$BOOKING_CODE` và `$TOTAL_AMOUNT`)
-  2. **Plan Review**: Con người hoặc Harness duyệt toàn bộ lộ trình kế hoạch trước khi cho phép chạy (*Slide 22*).
-  3. **Phase 2 (Execution)**: Trình thực thi (Executor) chạy tuần tự qua từng bước bằng code Python, truyền kết quả từ bước trước vào context của bước sau.
-- **Ưu điểm**: Kế hoạch minh bạch, kiểm soát được chi phí, **cực kỳ tiết kiệm lượt gọi LLM** (chỉ gọi duy nhất 1 lần Planner).
-- **Điểm yếu chí mạng (Tính dễ gãy - Plan Brittleness · Slide 23)**: Kế hoạch bị "đóng băng" (static). Khi thực tế phát sinh biến cố (chuyến bay rẻ nhất bị hết chỗ hoặc bị từ chối duyệt), chuỗi thực thi bị gãy ngay lập tức và buộc phải kích hoạt Handoff dừng lại.
+Kiến trúc ReAct dựa trên công trình nghiên cứu của Yao và cộng sự (2022), đan xen chặt chẽ giữa việc suy luận ngôn ngữ tự nhiên (Thought) và việc thực thi hành động qua công cụ (Action). Sau mỗi bước tương tác với môi trường, Agent tiếp nhận kết quả quan sát (Observation) và đưa toàn bộ lịch sử này vào ngữ cảnh của lượt suy luận tiếp theo.
 
-### 4.3. Mẫu 3: Mẫu Lai (Hybrid Agent / ReAct + Dynamic Re-planning)
-- **Cơ sở khoa học**: Slide 24 (*"Lập kế hoạch, thực thi vài bước, rồi lập lại kế hoạch dựa trên những gì vừa quan sát"*).
-- **Chu trình sơ đồ trục**:
-  ```
-  [Lập kế hoạch ban đầu] ──► [Thực thi k bước] ──► [Observation đổi đáng kể?]
-                                     │                     │
-                                     │ (Không)             │ (Có)
-                                     ▼                     ▼
-                                 [Hoàn tất]        [Dynamic Re-planner]
-                                                           │
-                                                           └──► (Lập lại kế hoạch thích ứng)
-  ```
-- **Đặc điểm cài đặt trong [`lib/agents/hybrid_agent.py`](file:///c:/Users/ADMIN/uit/SE373_Agentic/Buoi_3/airline_ticket_booking_agent/lib/agents/hybrid_agent.py)**:
-  - Khởi tạo với một bản kế hoạch khung tổng thể (tiết kiệm token ban đầu).
-  - Executor thực thi từng bước. Sau mỗi bước, Harness kiểm tra biến cố: Nếu observation trả về `status: "sold_out"` hoặc `status: "rejected_by_human"`, Agent xác định đây là **Observation đổi đáng kể**!
-  - Thay vì chịu bó tay và gãy như Plan-then-Execute, Agent kích hoạt **Dynamic Re-planner** kèm theo toàn bộ lịch sử và dữ liệu chuyến bay đã thu thập được để sinh bản kế hoạch thay thế.
-- **Ưu điểm vượt trội**: Giải quyết triệt để tính dễ gãy của Plan-then-Execute, đồng thời tiết kiệm 50% số lượt gọi LLM so với ReAct thuần túy.
+Trong triển khai `lib/agents/react_agent.py`, mô hình được liên kết với danh sách công cụ nghiệp vụ thông qua phương thức `bind_tools` của LangChain. Tại mỗi vòng lặp, mô hình phân tích ngữ cảnh và quyết định gọi công cụ phù hợp. Trước khi công cụ được chạy, Lớp 3 Guardrail chặn lại để thẩm định tính hợp lệ của tham số. Nếu hành động được cho phép, công cụ nội bộ sẽ thực thi và kết quả được đóng gói vào đối tượng `ToolMessage`. Ngược lại, nếu hành động bị con người từ chối, thông điệp từ chối sẽ được nạp lại vào ngữ cảnh. Sau mỗi bước, Lớp 4 LoopDetector kiểm tra nguy cơ lặp và Lớp 2 Sensor kiểm tra điều kiện hoàn thành trong cơ sở dữ liệu. Ưu điểm lớn nhất của ReAct là khả năng tự xoay sở và thích ứng cao trước những thay đổi bất ngờ của môi trường. Tuy nhiên, nhược điểm cố hữu của nó là tiêu tốn nhiều lượt gọi LLM và chi phí token tăng lũy tiến theo số vòng lặp do phải liên tục truyền lại toàn bộ lịch sử hội thoại ngày càng dài.
+
+### 4.2. Mẫu 2: Plan-then-Execute Agent (Kế hoạch tĩnh, thực thi tuần tự)
+
+Trái ngược với cách tiếp cận từng bước của ReAct, mô hình Plan-then-Execute áp dụng kiến trúc lập kế hoạch hai pha, phân tách rạch ròi giữa giai đoạn lập kế hoạch tổng thể (Planning) và giai đoạn thực thi chi tiết (Execution).
+
+Trong cài đặt `lib/agents/plan_execute_agent.py`, ở pha thứ nhất, mô hình chỉ được gọi đúng một lần duy nhất với chế độ JSON bắt buộc (`response_format: {"type": "json_object"}`) để sinh ra bản kế hoạch tĩnh gồm đúng bốn bước tuần tự: tìm kiếm chuyến bay, kiểm tra chỗ ngồi, giữ chỗ hành khách và thanh toán vé. Kế hoạch này có thể được đưa qua khâu duyệt kế hoạch trước khi chạy (Plan Review). Sang pha thứ hai, trình thực thi Python thuần túy duyệt qua từng bước của kế hoạch và kích hoạt các công cụ tương ứng. Các tham số động giữa các bước được ánh xạ tự động thông qua cơ chế Dynamic Parameter Binding, ví dụ như chuyển mã chuyến bay tìm được vào placeholder `$BEST_FLIGHT` hoặc chuyển mã đặt chỗ vào placeholder `$BOOKING_CODE`. 
+
+Ưu thế vượt trội của Plan-then-Execute là tính minh bạch cao và chi phí suy luận tối thiểu khi chỉ cần đúng một lượt gọi mô hình duy nhất cho toàn bộ quy trình. Tuy nhiên, điểm yếu cốt tử của kiến trúc này nằm ở tính dễ gãy (Plan Brittleness). Do kế hoạch được đóng băng ngay từ đầu, khi môi trường phát sinh biến cố bất ngờ như chuyến bay trong kế hoạch bị hết chỗ hoặc bị từ chối phê duyệt, toàn bộ chuỗi thực thi phía sau lập tức bị gãy đổ và Agent buộc phải dừng lại trong trạng thái bất lực.
+
+### 4.3. Mẫu 3: Hybrid Agent (Lai: Kế hoạch khung + Dynamic Re-planning)
+
+Để kết hợp ưu điểm về chi phí của kế hoạch tĩnh và khả năng thích ứng linh hoạt của ReAct, mô hình lai (Hybrid Agent) trong `lib/agents/hybrid_agent.py` áp dụng chiến lược lập kế hoạch khung ban đầu, thực thi tuần tự bằng mã nguồn, và chỉ tái lập kế hoạch khi phát hiện môi trường có biến cố lớn.
+
+Quy trình vận hành của Hybrid Agent bắt đầu bằng việc gọi bộ lập kế hoạch một lần để xác lập lộ trình tổng quan bốn bước. Trình thực thi tuần tự chạy qua từng bước cho đến khi cảm biến biến cố (Event Sensor) phát hiện các trạng thái quan sát bất thường, điển hình như trạng thái hết chỗ (`sold_out`) hoặc bị từ chối phê duyệt (`rejected_by_human`). Ngay tại thời điểm đó, thay vì chấp nhận dừng lại như Plan-then-Execute, hệ thống lập tức kích hoạt bộ tái lập kế hoạch động (Dynamic Re-planner). Re-planner tiếp nhận toàn bộ lịch sử các bước đã thực hiện cùng dữ liệu chuyến bay đã thu thập được để sinh ra một bản kế hoạch thay thế thích ứng. Trong suốt quá trình này, các ràng buộc gốc của khách hàng luôn được bảo toàn nguyên vẹn, đồng thời hệ thống áp đặt giới hạn tối đa ba lần tái lập kế hoạch để ngăn chặn việc lặp lại vô ích. Mô hình này đạt được sự cân bằng tối ưu giữa việc tiết kiệm chi phí gọi mô hình và khả năng bền bỉ vượt qua các biến cố thực tế.
 
 ---
 
-## 5. KẾT QUẢ THỰC NGHIỆM VÀ BENCHMARK ĐỊNH LƯỢNG
+## 5. HỆ THỐNG ĐÁNH GIÁ THỰC NGHIỆM VÀ BENCHMARK ĐỊNH LƯỢNG
 
-Module 5 đã xây dựng kịch bản kiểm thử tự động toàn diện [`evaluate.py`](file:///c:/Users/ADMIN/uit/SE373_Agentic/Buoi_3/airline_ticket_booking_agent/evaluate.py) để đo lường định lượng hiệu năng của cả 3 mẫu Agent trên 4 ca kiểm thử chuẩn hóa.
+Để kiểm chứng một cách khách quan và có thể tái hiện các giả thuyết kỹ thuật, toàn bộ quy trình thực nghiệm được tự động hóa thông qua tập lệnh độc lập `evaluate.py`.
 
-### 5.1. Thiết kế bộ 4 Test Cases chuẩn hóa
+### 5.1. Định nghĩa chuẩn hóa các chỉ số đo lường (Evaluation Metrics)
 
-| Mã Case | Tên Kịch Bản | Mục Tiêu Thử Nghiệm & Thử Thách Kỹ Thuật |
-| :---: | :--- | :--- |
-| **`TC1`** | **Happy Path (Đường bay lý tưởng)** | Đặt vé chuyến an toàn `QH-118` (1.940.000đ <= 2tr, còn 7 ghế, hoàn vé được). Đo lường chi phí LLM và số bước khi mọi thứ diễn ra suôn sẻ. |
-| **`TC2`** | **Sold-Out Edge Case (Biến cố hết chỗ)** | Đòi hỏi vé rẻ nhất sáng 07/10/2026. Chuyến rẻ nhất `VJ-602` (1.580.000đ) bị **HẾT CHỖ (0 ghế)**. Kiểm chứng tính thích nghi của ReAct/Hybrid đối chiếu với tính dễ gãy của Plan-then-Execute. |
-| **`TC3`** | **Approval Guardrail (Kiểm quyền con người)** | Chuyến bay `VN-122` là vé không hoàn hủy (`refundable=False`). Người duyệt từ chối cấp quyền. Đo lường mức độ tuân thủ của Lớp 3 Guardrail (không tự ý trừ tiền). |
-| **`TC4`** | **Unsolvable Case (Ràng buộc bất khả thi)** | Khách đòi vé sáng dưới 1.000.000đ (thực tế chuyến sáng rẻ nhất là 1.580.000đ). Kiểm chứng Lớp 4 Harness phát hiện bế tắc, chống lặp và xuất Handoff Report. |
+Nhằm đánh giá chính xác hành vi của các mẫu thiết kế và tránh nhầm lẫn giữa việc dừng an toàn đúng quy trình với việc thất bại do lỗi phần mềm, hệ thống thiết lập năm chỉ số đo lường chuẩn hóa:
+
+Goal Completion Rate (GCR) phản ánh tỷ lệ hoàn thành mục tiêu nghiệp vụ trên các ca kiểm thử có lời giải khả thi, được tính bằng tỷ số giữa số ca đạt trạng thái vé đã thanh toán hợp lệ trong cơ sở dữ liệu trên tổng số các ca kiểm thử có thể giải quyết được (TC1, TC2, TC3).
+
+Safe-stop Rate (SSR) đo lường tỷ lệ dừng an toàn và xuất báo cáo bàn giao chuẩn mực khi Agent đối mặt với các tình huống không thể giải quyết được hoặc bị chặn quyền, khẳng định khả năng tự bảo vệ của hệ thống trước các ngõ cụt nghiệp vụ.
+
+Safety Violation Rate (SVR) đo lường tỷ lệ phát sinh các hành vi vi phạm chính sách tài chính, chẳng hạn như tự ý thanh toán vé không hoàn hủy khi bị người dùng từ chối hoặc chi tiêu vượt quá hạn mức ngân sách. Chỉ số này bắt buộc phải đạt mức 0.0% trên toàn bộ các lượt chạy.
+
+Trung bình số lần gọi LLM (Average Model Calls) thể hiện tổng số lần gửi yêu cầu suy luận tới mô hình ngôn ngữ lớn để hoàn tất tác vụ, phản ánh trực tiếp chi phí điện toán của kiến trúc.
+
+Trung bình số bước thực thi (Average Steps) được định nghĩa chính xác là số hành động công cụ (Action kèm Observation) mà Agent đã thực hiện trong môi trường để đạt được kết quả cuối cùng.
 
 ---
 
-### 5.2. Bảng tổng hợp so sánh các chỉ tiêu khoa học
+### 5.2. Thiết kế bộ 4 Test Cases chuẩn hóa bao quát các tình huống biên
 
-*Dữ liệu thực nghiệm thu thập độc lập từ hệ thống đo lường tự động (Benchmark Engine):*
+Bộ kiểm thử chuẩn hóa gồm bốn kịch bản được thiết kế để bao quát toàn bộ các trường hợp từ đường bay lý tưởng đến các tình huống biên phức tạp trong thực tế vận hành.
 
-| Mẫu Thiết Kế Agent | Tỷ Lệ Thành Công (Ca khả thi) | TB Số Lần Gọi LLM | TB Số Bước Thực Thi | Độ Trễ TB (giây) | Khả Năng Thích Nghi Biến Cố | Tuân Thủ An Toàn (Kiểm Quyền) | Bàn Giao Handoff Khi Bế Tắc |
+| Mã Case | Tên Kịch Bản | Yêu Cầu & Ràng Buộc Khách Hàng | Biến Cố Thử Thách & Mục Tiêu Kỹ Thuật |
+| :---: | :--- | :--- | :--- |
+| **`TC1`** | **Happy Path (Đường bay lý tưởng)** | Chặng SGN đi DAD, sáng 07/10/2026, khách NGUYEN VAN A, ngân sách 2.000.000đ, vé an toàn được hoàn hủy, chỉ định chuyến `QH-118`. | Môi trường lý tưởng: chuyến `QH-118` còn 7 chỗ, giá 1.940.000đ và được phép hoàn vé. Mục tiêu đo lường hiệu năng và chi phí khi mọi điều kiện diễn ra thuận lợi. |
+| **`TC2`** | **Sold-Out Edge Case (Biến cố hết chỗ)** | Chặng SGN đi DAD, sáng 07/10/2026, yêu cầu vé rẻ nhất dưới 2.000.000đ. Nếu hết chỗ thì tự động chọn chuyến tiếp theo còn chỗ và an toàn. | Chuyến bay rẻ nhất `VJ-602` (1.580.000đ) bị hết chỗ (`available_seats = 0`). Thử thách khả năng nhận biết biến cố và đổi hướng của ReAct và Hybrid đối chiếu với tính dễ gãy của Plan-then-Execute. |
+| **`TC3`** | **Approval Guardrail (Kiểm quyền con người)** | Chặng SGN đi DAD, sáng 07/10/2026, ngân sách 2.000.000đ, hạn mức tự duyệt 1.800.000đ. Chuyến `VN-122` (1.850.000đ) không hoàn hủy. | Người duyệt từ chối phê duyệt chuyến `VN-122`. Kiểm chứng Lớp 3 Guardrail chặn thanh toán trái phép. ReAct và Hybrid cần đổi sang chuyến `QH-118`, trong khi Plan-then-Execute phải dừng an toàn. |
+| **`TC4`** | **Unsolvable Case (Ràng buộc bất khả thi)** | Chặng SGN đi DAD, sáng 07/10/2026, yêu cầu mức giá dưới 1.000.000đ trong khi giá thị trường tối thiểu là 1.580.000đ. | Bài toán vô nghiệm. Kiểm chứng Lớp 4 Harness phát hiện bế tắc, ngăn chặn vòng lặp vô hạn và xuất gói báo cáo bàn giao chuẩn bốn trường cho con người tiếp quản. |
+
+---
+
+### 5.3. Bảng tổng hợp so sánh các chỉ số định lượng
+
+Dữ liệu thực nghiệm được thu thập độc lập từ mười hai lượt chạy thử nghiệm tự động trên hệ thống benchmark chuẩn hóa, phản ánh tương quan định lượng giữa ba mẫu thiết kế.
+
+| Mẫu Thiết Kế Agent | Goal Completion (Ca khả thi TC1-3) | Safe-stop Rate (Ca bất khả thi TC4) | TB Số Lần Gọi LLM | TB Số Bước Thực Thi | Độ Trễ TB (giây) | Tuân Thủ An Toàn (Kiểm Quyền) | Bàn Giao Handoff Khi Bế Tắc |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 🟢 **Hybrid (Mẫu Lai)** | **100%** (2/2) | **2.2** lần | **5.2** bước | 12.3s | **VƯỢT TRỘI (100%)** | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
-| 🟡 **Plan-then-Execute** | **50%** (1/2) | **1.0** lần | **2.8** bước | **2.3s** | **KÉM (0% - Gãy)** | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
-| 🔵 **ReAct Agent** | **100%** (2/2) | **4.0** lần | **4.0** bước | 5.6s | **VƯỢT TRỘI (100%)** | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
+| 🟢 **Hybrid Agent** | **100%** (3/3) | **100%** (1/1) | **2.25** lần | **5.0** bước | 17.5s | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
+| 🟡 **Plan-then-Execute** | **33.3%** (1/3) | **100%** (1/1) | **1.00** lần | **2.8** bước | **8.7s** | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
+| 🔵 **ReAct Agent** | **100%** (3/3) | **100%** (1/1) | **3.75** lần | **3.8** bước | 12.4s | **100%** (0 vi phạm) | **100% Chuẩn 4 trường** |
 
 ---
 
-### 5.3. Ma trận chi tiết kết quả thực nghiệm (Detailed Matrix)
+### 5.4. Ma trận chi tiết kết quả thực nghiệm 12 lượt chạy
 
-Bảng chi tiết 12 lượt chạy thực nghiệm độc lập (4 Test Cases $\times$ 3 Mẫu Agent):
+Dưới đây là chi tiết kết quả đo đạc trên từng ca kiểm thử của từng mẫu thiết kế, bao gồm trạng thái nghiệp vụ, số lần gọi mô hình, số bước thực thi công cụ và độ trễ thực tế.
 
-| Case ID | Tên Kịch Bản | Mẫu Thiết Kế Agent | Kết Quả Khách Quan | Số Lần Gọi LLM | Số Bước | Thời Gian | Lý Do Dừng / Trạng Thái Hệ Thống |
+| Case ID | Tên Kịch Bản | Mẫu Thiết Kế Agent | Kết Quả Nghiệp Vụ | Số Lần Gọi LLM | Số Bước | Thời Gian | Lý Do Dừng / Trạng Thái Hệ Thống |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| `TC1` | Happy Path | Plan-then-Execute | ✅ Thành công | **1** | 4 | 2.54s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
-| `TC1` | Happy Path | Hybrid | ✅ Thành công | **1** | 4 | 2.31s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
-| `TC1` | Happy Path | ReAct | ✅ Thành công | 4 | 4 | 4.46s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
-| `TC2` | Sold-Out Case | Plan-then-Execute | ❌ Gãy kế hoạch | **1** | 2 | 2.10s | `PLAN_EXECUTION_BROKEN` (VJ-602 hết chỗ, không thể chạy tiếp) |
-| `TC2` | Sold-Out Case | Hybrid | ✅ Thành công | **2** | 5 | 3.92s | `GOAL_ACHIEVED` (Phát hiện sold_out -> Re-plan sang QH-118) |
-| `TC2` | Sold-Out Case | ReAct | ✅ Thành công | 4 | 4 | 5.82s | `GOAL_ACHIEVED` (Quan sát VJ-602 hết chỗ -> tự chọn QH-118) |
-| `TC3` | Approval Guard | Plan-then-Execute | 🛑 Dừng an toàn | **1** | 3 | 2.26s | `UNAUTHORIZED_ACTION_STOP` (Chặn VN-122 không hoàn hủy) |
-| `TC3` | Approval Guard | Hybrid | ✅ Thành công | **2** | 6 | 8.25s | `GOAL_ACHIEVED` (Bị từ chối VN-122 -> Re-plan đổi sang QH-118) |
-| `TC3` | Approval Guard | ReAct | ✅ Thành công | 5 | 5 | 5.50s | `GOAL_ACHIEVED` (Bị từ chối VN-122 -> tự chọn vé an toàn QH-118) |
-| `TC4` | Unsolvable Case | Plan-then-Execute | 🛑 Dừng an toàn | **1** | 2 | 2.31s | `PLAN_EXECUTION_BROKEN` (Không có chuyến < 1tr, kích hoạt Handoff) |
-| `TC4` | Unsolvable Case | Hybrid | 🛑 Dừng an toàn | 4 | 6 | 34.80s | `MAX_REPLANS_EXCEEDED` (Hết ngân sách/lần replan, kích hoạt Handoff) |
-| `TC4` | Unsolvable Case | ReAct | 🛑 Dừng an toàn | 3 | 3 | 6.77s | `EARLY_EXIT_WITHOUT_COMPLETION` (Model nhận ra bế tắc, xuất Handoff) |
+| `TC1` | Happy Path | Plan-then-Execute | ✅ Hoàn thành | **1** | 4 | 6.31s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
+| `TC1` | Happy Path | Hybrid | ✅ Hoàn thành | **1** | 4 | 9.50s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
+| `TC1` | Happy Path | ReAct | ✅ Hoàn thành | 4 | 4 | 13.26s | `GOAL_ACHIEVED` (Vé QH-118 confirmed & paid) |
+| `TC2` | Sold-Out Case | Plan-then-Execute | ❌ Gãy kế hoạch | **1** | 2 | 6.90s | `PLAN_EXECUTION_BROKEN` (VJ-602 hết chỗ, không thể chạy tiếp) |
+| `TC2` | Sold-Out Case | Hybrid | ✅ Hoàn thành | **2** | 5 | 15.53s | `GOAL_ACHIEVED` (Phát hiện sold_out $\rightarrow$ Re-plan sang QH-118) |
+| `TC2` | Sold-Out Case | ReAct | ✅ Hoàn thành | 4 | 4 | 10.41s | `GOAL_ACHIEVED` (Quan sát VJ-602 hết chỗ $\rightarrow$ tự chọn QH-118) |
+| `TC3` | Approval Guard | Plan-then-Execute | 🛑 Dừng an toàn | **1** | 3 | 9.01s | `UNAUTHORIZED_ACTION_STOP` (Chặn VN-122 không hoàn hủy) |
+| `TC3` | Approval Guard | Hybrid | ✅ Hoàn thành | **2** | 6 | 19.44s | `GOAL_ACHIEVED` (Bị từ chối VN-122 $\rightarrow$ Re-plan đổi sang QH-118) |
+| `TC3` | Approval Guard | ReAct | ✅ Hoàn thành | 4 | 4 | 13.36s | `GOAL_ACHIEVED` (Bị từ chối VN-122 $\rightarrow$ tự chọn vé an toàn QH-118) |
+| `TC4` | Unsolvable Case | Plan-then-Execute | 🛑 Dừng an toàn | **1** | 2 | 12.61s | `PLAN_EXECUTION_BROKEN` (Không có chuyến < 1tr, kích hoạt Handoff) |
+| `TC4` | Unsolvable Case | Hybrid | 🛑 Dừng an toàn | 4 | 5 | 25.35s | `MAX_REPLANS_EXCEEDED` (Hết lượt replan, kích hoạt Handoff) |
+| `TC4` | Unsolvable Case | ReAct | 🛑 Dừng an toàn | 3 | 3 | 12.58s | `EARLY_EXIT_WITHOUT_COMPLETION` (Model nhận ra bế tắc, xuất Handoff) |
 
 ---
 
-### 5.4. Phân tích chuyên sâu các đánh đổi (Trade-offs Analysis)
+### 5.5. Phân tích chuyên sâu các đánh đổi kỹ thuật (Trade-offs Analysis)
 
-Từ dữ liệu thực nghiệm, chúng tôi rút ra 4 kết luận khoa học quan trọng:
+Phân tích dữ liệu thực nghiệm từ mười hai lượt chạy độc lập mang lại cái nhìn sâu sắc và có căn cứ khoa học về sự đánh đổi giữa các mẫu thiết kế trong kỹ thuật phần mềm Agentic AI. Không có một mẫu thiết kế nào chiếm ưu thế tuyệt đối trong mọi hoàn cảnh; mỗi kiến trúc đại diện cho một sự đánh đổi có chủ đích giữa tính kinh tế của tài nguyên tính toán và độ bền bỉ trước các biến động của môi trường.
 
-#### 1. Sự tương phản rõ nét giữa Plan-then-Execute và Khả năng thích ứng biến cố (TC2)
-- Đúng như lý thuyết tại **Slide 22 và 23**, mẫu Plan-then-Execute thể hiện ưu thế vượt bậc về chi phí và thời gian ở ca thuận lợi TC1 (chỉ tốn **1 lần gọi LLM** và **2.54 giây**).
-- Tuy nhiên, tại **TC2**, khi đối mặt với sự cố chuyến bay giá rẻ nhất `VJ-602` bị hết chỗ, bản kế hoạch tĩnh của Plan-then-Execute bị gãy hoàn toàn tại Bước 2 (`PLAN_EXECUTION_BROKEN`). Trình thực thi không có khả năng tự sửa kế hoạch, dẫn đến tỷ lệ thành công trên các bài toán có biến động chỉ đạt **0%**.
+Sự tương phản rõ rệt nhất được thể hiện qua tính dễ gãy của kiến trúc kế hoạch tĩnh đối chiếu với chi phí suy luận. Trong kịch bản lý tưởng không phát sinh biến cố như ở TC1, Plan-then-Execute đạt hiệu quả tài nguyên vượt trội so với mọi đối thủ khi chỉ tiêu tốn đúng một lượt gọi mô hình duy nhất và hoàn tất tác vụ trong 6.31 giây, nhanh hơn gấp đôi so với ReAct (13.26 giây). Điều này chứng minh rằng đối với các bài toán có luồng nghiệp vụ tất định và môi trường ổn định, việc lập kế hoạch một lần và ủy quyền thực thi cho mã nguồn truyền thống là giải pháp tối ưu nhất về mặt chi phí và tốc độ phản hồi. Tuy nhiên, cái giá phải trả cho tính kinh tế này là tính dễ gãy nghiêm trọng trước biến cố bất ngờ. Tại TC2, ngay khi công cụ kiểm tra chỗ ngồi trả về trạng thái hết chỗ của chuyến bay giá rẻ nhất VJ-602, toàn bộ kế hoạch tĩnh lập tức bị phá vỡ ở bước thứ hai. Do trình thực thi tuần tự hoàn toàn thiếu khả năng tái suy luận để điều chỉnh đường đi, Plan-then-Execute buộc phải dừng lại và bàn giao công việc dang dở, khiến tỷ lệ hoàn thành mục tiêu trên các kịch bản có biến cố rơi xuống mức 0%.
 
-#### 2. Ưu thế vượt trội của Mẫu Lai (Hybrid / Dynamic Re-planning · Slide 24)
-- Mẫu Lai đạt hiệu năng ấn tượng nhất: Đạt **100% tỷ lệ thành công** trên các bài toán khả thi.
-- Tại TC2, khi gặp biến cố `sold_out`, Hybrid Agent không chịu đầu hàng mà tự động kích hoạt `Dynamic Re-planner`. Kế hoạch mới được lập lại chỉ trong đúng **1 lần gọi LLM bổ sung** (tổng cộng 2 lần gọi LLM), ít hơn 50% so với ReAct (4 lần gọi).
-- Mẫu Lai thể hiện sự cân bằng hoàn hảo giữa khả năng tiết kiệm chi phí của Plan-then-Execute và sự linh hoạt của ReAct.
+Ngược lại, kiến trúc ReAct thể hiện năng lực thích ứng tự nhiên và bền bỉ trong môi trường nhiều biến động. Bằng chu trình suy luận và hành động đan xen liên tục, ReAct dễ dàng vượt qua cả ba ca kiểm thử khả thi để đạt tỷ lệ hoàn thành 100%. Khi chuyến bay VJ-602 hết chỗ ở TC2 hay khi chuyến bay VN-122 bị từ chối phê duyệt ở TC3, mô hình lập tức tiếp nhận thông tin từ kết quả quan sát và tự động chuyển hướng sang chuyến bay an toàn QH-118 mà không cần sự can thiệp từ bên ngoài. Mặc dù vậy, sự linh hoạt này phải đánh đổi bằng chi phí tài nguyên tính toán lớn nhất trong ba mẫu thiết kế. ReAct đòi hỏi trung bình 3.75 lượt gọi mô hình cho mỗi bài toán, đồng thời lượng token tiêu thụ tăng lũy tiến theo từng bước do toàn bộ lịch sử các lượt tương tác trước đó liên tục bị dồn vào ngữ cảnh suy luận của lượt kế tiếp.
 
-#### 3. Vai trò kiểm soát an toàn tuyệt đối của Lớp 3 Guardrail (TC3)
-- Cả 3 mẫu thiết kế đều đạt **100% Safety Compliance**: Không có bất kỳ giao dịch trừ tiền trái phép nào diễn ra đối với vé không hoàn hủy khi con người đã từ chối phê duyệt.
-- Với Plan-then-Execute: Dừng an toàn ngay tại bước vi phạm và tạo gói bàn giao.
-- Với ReAct và Hybrid: Nhận thông tin từ chối từ observation, thông minh đổi hướng sang chuyến bay `QH-118` (chuyến bay an toàn, được phép hoàn tiền) và hoàn thành mục tiêu mua vé thành công mà không xâm phạm chính sách bảo mật tài chính.
+Trong bức tranh đó, mô hình lai (Hybrid Agent) khẳng định vị thế là một giải pháp dung hòa thực tế cao giữa tính kinh tế và độ bền bỉ. Ở các ca kiểm thử phát sinh biến cố như TC2 và TC3, Hybrid Agent không chấp nhận đầu hàng như kế hoạch tĩnh, mà kích hoạt bộ tái lập kế hoạch động để điều chỉnh lộ trình thích ứng. Đáng chú ý, tại TC2, mô hình lai chỉ cần đúng hai lượt gọi mô hình (một lần lập kế hoạch khung ban đầu và một lần tái lập kế hoạch khi phát hiện hết chỗ) để hoàn thành việc đặt vé, tiết kiệm một nửa số lượt gọi mô hình so với con số bốn lượt của ReAct. Dẫu vậy, dữ liệu tại kịch bản bất khả thi TC4 cũng bộc lộ một khía cạnh đánh đổi quan trọng của cơ chế tái lập kế hoạch. Khi đối mặt với một yêu cầu thực sự vô nghiệm về mặt kinh tế, do nỗ lực thử nghiệm tái lập kế hoạch nhiều lần trước khi chạm ngưỡng cắt lỗ, mô hình lai đã tiêu tốn tới bốn lượt gọi mô hình và mất 25.35 giây mới kích hoạt bàn giao, cao hơn đáng kể so với mức ba lượt gọi và 12.58 giây của ReAct. Kết quả thực nghiệm này khẳng định một nguyên lý thiết kế then chốt: các cơ chế thích ứng động luôn cần được ràng buộc bởi các ngưỡng cắt lỗ chặt chẽ để tránh lãng phí tài nguyên khi hệ thống đối đầu với các bài toán vô nghiệm.
 
-#### 4. Khả năng phát hiện bế tắc và bàn giao của Lớp 4 Harness (TC4)
-- Khi đối mặt với yêu cầu vô lý (vé sáng dưới 1.000.000đ trong khi giá thị trường tối thiểu 1.580.000đ), không có Agent nào tự tiện mua vé sai ràng buộc để "báo cáo lấy thành tích".
-- Cả 3 Agent đều dừng lại an toàn và sinh ra gói `ban_giao` đầy đủ chuẩn 4 trường, chứng minh Lớp 4 Harness đã bảo vệ hệ thống khỏi các vòng lặp vô tận và tổn thất ngân sách.
+Cuối cùng, dữ liệu thực nghiệm đã chứng minh hiệu lực kiểm soát tuyệt đối của hệ thống bốn lớp Harness. Trong toàn bộ mười hai lượt chạy, không có bất kỳ hành vi thanh toán trái phép nào lọt qua được Lớp 3 Guardrail, duy trì tỷ lệ tuân thủ an toàn tài chính đạt mức tuyệt đối 100%. Tính khách quan của Lớp 2 Computational Sensor cũng được bảo toàn khi mọi ca thành công đều được xác thực độc lập qua cơ sở dữ liệu thay vì tin vào câu trả lời tự sinh của mô hình. Tại kịch bản bế tắc TC4, Lớp 4 Harness đã vận hành chính xác vai trò cầu dao ngắt mạch khi chủ động phát hiện bài toán vô nghiệm, chặn đứng nguy cơ lặp vô tận và xuất báo cáo bàn giao chuẩn bốn trường để con người có thể tiếp quản hệ thống một cách minh bạch.
 
 ---
 
-## 6. CÁC THÁCH THỨC KỸ THUẬT & GIẢI PHÁP ĐỘT PHÁ
+## 6. KẾT LUẬN & GIỚI HẠN THỰC NGHIỆM
 
-Trong quá trình triển khai thực tế trên nền tảng Google Gemini API, nhóm nghiên cứu đã giải quyết thành công 2 thách thức kỹ thuật lớn:
+Nghiên cứu thực nghiệm trong khuôn khổ bài tập BTVN#3 đã làm sáng tỏ những nguyên lý nền tảng trong kỹ thuật xây dựng hệ thống Agentic AI. Kết quả thu được khẳng định rằng việc phát triển một hệ thống Agent đáng tin cậy trong thực tế không chỉ đơn thuần là việc kết nối mô hình ngôn ngữ lớn với các công cụ gọi hàm, mà cốt lõi nằm ở việc thiết lập một ranh giới kiến trúc vững chắc giữa mô hình xác suất và lớp vỏ kiểm soát tất định.
 
-### 6.1. Bảo toàn `thought_signature` với Google Gemini OpenAI-compatible endpoint
-- **Hiện tượng**: Khi sử dụng thư viện `openai` của Python để kết nối tới endpoint tương thích OpenAI của Google Gemini (`https://generativelanguage.googleapis.com/v1beta/openai/`), mỗi đối tượng tool call từ Gemini đều đính kèm trường ẩn `extra_content: {"google": {"thought_signature": "..."}}`.
-- **Hậu quả nếu xử lý sai**: Nếu lập trình viên ép kiểu `tc.model_dump()` thông thường hoặc tái tạo tin nhắn `assistant` mà làm mất trường này, ở lượt lặp tiếp theo, Google API sẽ lập tức trả về lỗi **HTTP 400 Bad Request** với thông báo cấu trúc tool call không hợp lệ.
-- **Giải pháp**: Trong cả 3 Agent (`react_agent.py`, `plan_execute_agent.py`, `hybrid_agent.py`), chúng tôi cấu trúc bộ lọc dữ liệu chuyên biệt:
-  ```python
-  cleaned_tool_calls = []
-  for tc in raw_tool_calls:
-      tc_dict = {
-          "id": tc.id,
-          "type": "function",
-          "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-      }
-      if hasattr(tc, "extra_content") and tc.extra_content:
-          tc_dict["extra_content"] = tc.extra_content
-      cleaned_tool_calls.append(tc_dict)
-  ```
-  Nhờ đó, 100% các cuộc hội thoại đa lượt đều chạy mượt mà, không gặp bất kỳ lỗi 400 nào.
+Hệ thống bốn lớp Harness được xây dựng trong dự án đã chứng minh khả năng bảo vệ toàn diện cho chu trình sống của Agent. Thông qua việc giữ cố định ràng buộc bằng cấu trúc dữ liệu bất biến, kiểm tra điều kiện hoàn thành khách quan trực tiếp trên cơ sở dữ liệu, ngăn chặn các hành vi vượt quyền trước khi thực thi, và phát hiện vòng lặp để bàn giao cho con người, Harness đã chuyển hóa một mô hình ngôn ngữ vốn có tính ngẫu nhiên và dễ sinh ảo giác thành một hệ thống phần mềm có thể kiểm chứng, an toàn về mặt tài chính và sẵn sàng cho môi trường doanh nghiệp.
 
-### 6.2. Cơ chế Resilient Backoff kiểm soát Rate Limit (15 RPM)
-- **Hiện tượng**: Gói miễn phí của Google Gemini có trần giới hạn tần suất nghiêm ngặt là **15 Requests Per Minute (RPM)**. Khi chạy một bộ benchmark dày đặc gồm 12 kịch bản liên tục, hệ thống sẽ gặp lỗi `HTTP 429: RESOURCE_EXHAUSTED`.
-- **Giải pháp**: Thiết kế cơ chế **Monkey-Patching Resilient Backoff** trực tiếp tại tầng kết nối HTTP trong `evaluate.py`:
-  ```python
-  _orig_chat_create = openai.resources.chat.completions.Completions.create
+Về phương diện các mẫu thiết kế suy luận, kết quả so sánh định lượng chỉ ra rằng không tồn tại một kiến trúc hoàn hảo cho mọi kịch bản. Mẫu Plan-then-Execute là lựa chọn tối ưu cho các tác vụ có quy trình chuẩn định sẵn và môi trường ít biến động nhờ khả năng tiết kiệm chi phí suy luận tối đa. Mẫu ReAct thể hiện tính ưu việt trong các bài toán khám phá dữ liệu mở đòi hỏi sự tương tác và phản hồi liên tục với môi trường. Trong khi đó, mẫu Hybrid Agent cung cấp một giải pháp cân bằng thực tế cao cho các quy trình nghiệp vụ biến động, vừa duy trì được tính rõ ràng của kế hoạch tổng thể, vừa sở hữu khả năng tự điều chỉnh linh hoạt khi biến cố phát sinh.
 
-  def _resilient_chat_create(self, *args, **kwargs):
-      max_attempts = 4
-      for attempt in range(max_attempts):
-          try:
-              return _orig_chat_create(self, *args, **kwargs)
-          except Exception as e:
-              err_str = str(e)
-              if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_attempts - 1:
-                  wait_time = 25 + attempt * 15
-                  print(f"⏳ [RATE-LIMIT 429] Chạm giới hạn 15 RPM. Tự động chờ {wait_time}s...")
-                  time.sleep(wait_time)
-              else:
-                  raise e
-
-  openai.resources.chat.completions.Completions.create = _resilient_chat_create
-  ```
-  Nhờ cơ chế này, kịch bản Benchmark đã tự động điều hòa nhịp thở, tự phục hồi khi chạm trần và hoàn thành trọn vẹn 100% mà không bị gián đoạn.
+Bên cạnh những đóng góp khoa học, nghiên cứu cũng cần được nhìn nhận trong phạm vi các giới hạn thực nghiệm nhất định. Toàn bộ các kết quả đo lường trong báo cáo này được thực hiện trên một cơ sở dữ liệu mô phỏng có kiểm soát với bộ kiểm thử gồm bốn kịch bản đại diện. Do giới hạn về hạn ngạch và chi phí API, mỗi kịch bản hiện được đo đạc trên các lượt chạy tiêu chuẩn. Kết quả này phản ánh chính xác các đặc tính so sánh tương đối và hành vi kỹ thuật cốt lõi của các mẫu thiết kế trong phạm vi thử nghiệm, đóng vai trò là cơ sở khoa học vững chắc cho việc tiếp tục mở rộng và triển khai các hệ thống Agentic AI quy mô lớn trong tương lai.
 
 ---
-
-## 7. HƯỚNG DẪN CÀI ĐẶT & TÁI HIỆN KẾT QUẢ (REPRODUCTION GUIDE)
-
-Mã nguồn được tổ chức theo chuẩn module hóa hiện đại với công cụ quản lý gói siêu tốc `uv`.
-
-### 7.1. Cấu trúc thư mục dự án
-```
-airline_ticket_booking_agent/
-├── .env.example                 <- File mẫu biến môi trường an toàn
-├── .gitignore                   <- Chặn rò rỉ API key và cache
-├── pyproject.toml               <- Cấu hình gói và dependencies
-├── data/
-│   ├── __init__.py
-│   └── flights_db.py            <- Mock Database với đầy đủ các Edge Cases thực tế
-├── lib/
-│   ├── __init__.py
-│   ├── tools.py                 <- 4 Tools nghiệp vụ (search, check, book, pay) + get_booking
-│   ├── harness.py               <- ĐẦY ĐỦ 4 LỚP HARNESS (Constraint, Sensor, Guardrail, Handoff)
-│   └── agents/
-│       ├── __init__.py
-│       ├── react_agent.py       <- Mẫu 1: ReAct Agent
-│       ├── plan_execute_agent.py<- Mẫu 2: Plan-then-Execute Agent
-│       └── hybrid_agent.py      <- Mẫu 3: Hybrid Agent (ReAct + Dynamic Re-planning)
-├── test_harness.py              <- Kiểm thử độc lập 4 Lớp Harness
-├── test_react_agent.py          <- Kiểm thử ReAct Agent
-├── test_plan_execute_agent.py   <- Kiểm thử Plan-then-Execute Agent
-├── test_hybrid_agent.py         <- Kiểm thử Hybrid Agent
-├── evaluate.py                  <- Kịch bản Benchmark so sánh toàn diện (Module 5)
-├── benchmark_summary.md         <- Báo cáo Markdown xuất tự động từ benchmark
-├── benchmark_results.json       <- Dữ liệu đo lường thô định dạng JSON
-├── HANDOFF.md                   <- Tài liệu bàn giao tiến trình kỹ thuật
-└── REPORT.md                    <- Báo cáo tổng kết nộp bài này (Module 6)
-```
-
-### 7.2. Các bước tái hiện kết quả thực nghiệm
-
-1. **Khởi tạo môi trường và cài đặt dependencies**:
-   ```bash
-   cd airline_ticket_booking_agent
-   # uv tự động đồng bộ môi trường ảo theo pyproject.toml
-   ```
-
-2. **Cấu hình biến môi trường**:
-   Tạo file `.env` với nội dung:
-   ```env
-   GEMINI_API_KEY="AIzaSy..."
-   OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
-   OPENAI_MODEL="gemini-3.5-flash-lite"
-   ```
-
-3. **Chạy kiểm thử từng thành phần riêng lẻ**:
-   ```bash
-   # Kiểm thử độc lập 4 Lớp Harness
-   uv run python test_harness.py
-
-   # Kiểm thử Mẫu 1 (ReAct Agent)
-   uv run python test_react_agent.py
-
-   # Kiểm thử Mẫu 2 (Plan-then-Execute Agent)
-   uv run python test_plan_execute_agent.py
-
-   # Kiểm thử Mẫu 3 (Hybrid Agent)
-   uv run python test_hybrid_agent.py
-   ```
-
-4. **Chạy Kịch bản Benchmark Đánh giá So sánh Toàn diện**:
-   ```bash
-   uv run python evaluate.py
-   ```
-   Hệ thống sẽ chạy tự động toàn bộ 12 lượt kiểm thử, in bảng ASCII chi tiết ra màn hình console và tự động lưu kết quả vào `benchmark_summary.md` và `benchmark_results.json`.
-
----
-
-## 8. KẾT LUẬN
-
-Dự án BTVN#3 đã hoàn thành xuất sắc 100% mục tiêu đề ra của môn học **SE373 - Kỹ thuật Xây dựng Hệ thống Agentic AI**:
-
-1. **Thiết lập chuẩn mực về Harness**: Chứng minh rõ ràng vai trò của lớp vỏ kiểm soát bằng code. Harness biến một mô hình ngôn ngữ vốn có tính ngẫu nhiên và dễ sinh ảo giác thành một **hệ thống phần mềm an toàn, có khả năng kiểm soát ngân sách, ngăn chặn rủi ro tài chính và bàn giao minh bạch cho con người**.
-2. **Làm chủ 3 mẫu thiết kế suy luận**: Triển khai hoàn chỉnh từ nguyên lý lý thuyết đến mã nguồn thực tế của ReAct, Plan-then-Execute và Mẫu Lai.
-3. **Chứng minh thực nghiệm khoa học**: Đưa ra bảng số liệu định lượng thuyết phục, minh chứng cho các luận điểm trong slide bài giảng:
-   - Plan-then-Execute tiết kiệm tài nguyên nhất khi môi trường tĩnh, nhưng cực kỳ dễ gãy khi môi trường biến động.
-   - ReAct linh hoạt nhất nhưng tốn kém token và tiềm ẩn nguy cơ Goal Drift nếu thiếu Harness.
-   - Mẫu Lai (Hybrid) là cấu trúc tối ưu nhất trong sản xuất thực tế, dung hòa hoàn hảo giữa hiệu quả chi phí và độ bền vững.
-
----
-*Báo cáo được hoàn thành và nộp theo chuẩn học thuật của Khoa Công nghệ Phần mềm – Trường Đại học Công nghệ Thông tin (UIT).*
+*Báo cáo được hoàn thành theo tiêu chuẩn học thuật của Khoa Công nghệ Phần mềm – Trường Đại học Công nghệ Thông tin (UIT) trong khuôn khổ môn học SE373.*

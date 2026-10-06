@@ -24,7 +24,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 import dotenv
-from openai import OpenAI
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
 from data.flights_db import BOOKINGS_DB, FLIGHTS_DATA
 from lib.agents.react_agent import AgentResult, _execute_tool
@@ -135,21 +136,20 @@ class PlanExecuteAgent:
         self.on_plan_review = on_plan_review
         self.on_approval_request = on_approval_request
 
-        self.client = OpenAI(
+        # Khởi tạo LangChain ChatOpenAI tương thích với Google Gemini v1beta OpenAI endpoint
+        self.llm = ChatOpenAI(
             api_key=os.getenv("GEMINI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL"),
+            model=self.model_name,
+            temperature=self.temperature,
+            model_kwargs={"response_format": {"type": "json_object"}},
         )
 
     def generate_plan(self, user_prompt: str, constraints: BookingConstraints) -> List[PlanStep]:
         """Giai đoạn 1: Gọi Model 1 lần để sinh trọn bản kế hoạch tĩnh (Slide 22)."""
         prompt = _build_planner_prompt(user_prompt, constraints)
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or "{}"
+        ai_msg = self.llm.invoke([HumanMessage(content=prompt)])
+        content = ai_msg.content or "{}"
         try:
             plan_json = json.loads(content)
             steps = []

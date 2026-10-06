@@ -25,7 +25,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 import dotenv
-from openai import OpenAI
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
 from data.flights_db import BOOKINGS_DB, FLIGHTS_DATA
 from lib.agents.plan_execute_agent import PlanStep
@@ -189,20 +190,19 @@ class HybridAgent:
         self.max_replans = max_replans
         self.on_approval_request = on_approval_request
 
-        self.client = OpenAI(
+        # Khởi tạo LangChain ChatOpenAI tương thích với Google Gemini v1beta OpenAI endpoint
+        self.llm = ChatOpenAI(
             api_key=os.getenv("GEMINI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL"),
+            model=self.model_name,
+            temperature=self.temperature,
+            model_kwargs={"response_format": {"type": "json_object"}},
         )
 
     def _call_planner(self, prompt: str) -> List[PlanStep]:
         """Gọi LLM sinh danh sách các bước có cấu trúc JSON."""
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            response_format={"type": "json_object"},
-        )
-        content = response.choices[0].message.content or "{}"
+        ai_msg = self.llm.invoke([HumanMessage(content=prompt)])
+        content = ai_msg.content or "{}"
         try:
             clean_content = content.strip()
             if clean_content.startswith("```"):

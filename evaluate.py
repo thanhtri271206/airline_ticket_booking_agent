@@ -38,29 +38,41 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ==============================================================================
 # 0. BẢO VỆ RATE LIMIT (RESILIENT RATE-LIMIT BACKOFF CHO GEMINI 15 RPM)
 # ==============================================================================
-import openai.resources.chat.completions
-
-_orig_chat_create = openai.resources.chat.completions.Completions.create
-
-
-def _resilient_chat_create(self, *args, **kwargs):
-    """Bọc lời gọi API với cơ chế tự động chờ hồi phục nếu chạm giới hạn 15 RPM của Gemini."""
-    max_attempts = 4
-    for attempt in range(max_attempts):
-        try:
-            return _orig_chat_create(self, *args, **kwargs)
-        except Exception as e:
-            err_str = str(e)
-            if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_attempts - 1:
-                wait_time = 25 + attempt * 15
-                print(f"\n⏳ [GEMINI RATE-LIMIT 429] Chạm giới hạn 15 RPM. Tạm dừng {wait_time}s để hồi phục quota...")
-                time.sleep(wait_time)
-            else:
-                raise e
+# Sử dụng LangChain's built-in retry thông qua monkey-patch HTTP layer.
+# Patch trực tiếp httpx transport mà langchain_openai sử dụng nội bộ.
+# ==============================================================================
 
 
-# Vá hàm gọi OpenAI client một cách minh bạch
-openai.resources.chat.completions.Completions.create = _resilient_chat_create
+def _make_rate_limit_retry(fn):
+    """Decorator retry khi gặp 429 / RESOURCE_EXHAUSTED từ Gemini API (15 RPM)."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        max_attempts = 4
+        for attempt in range(max_attempts):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as e:
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_attempts - 1:
+                    wait_time = 25 + attempt * 15
+                    print(f"\n⏳ [GEMINI RATE-LIMIT 429] Chạm giới hạn 15 RPM. Tạm dừng {wait_time}s để hồi phục quota...")
+                    time.sleep(wait_time)
+                else:
+                    raise e
+        return None  # unreachable
+
+    return wrapper
+
+
+# Patch LangChain ChatOpenAI._generate (entry point thực sự khi gọi llm.invoke)
+try:
+    from langchain_openai.chat_models.base import BaseChatOpenAI
+    BaseChatOpenAI._generate = _make_rate_limit_retry(BaseChatOpenAI._generate)
+    print("✅ [RATE-LIMIT] Đã kích hoạt retry tự động cho LangChain ChatOpenAI.")
+except Exception as _e:
+    print(f"⚠️  [RATE-LIMIT] Không thể patch LangChain retry: {_e}")
 
 
 from data.flights_db import BOOKINGS_DB, reset_mock_db

@@ -1,6 +1,6 @@
 # BẢNG KẾT QUẢ THỰC NGHIỆM ĐÁNH GIÁ 3 MẪU THIẾT KẾ AGENT
 
-> *Thời điểm thực nghiệm: 2026-10-01 20:35:02*  
+> *Thời điểm thực nghiệm: 2026-10-05 19:44:27*  
 > *Mô hình nền tảng: Google Gemini (OpenAI-compatible endpoint)*  
 > *Hệ thống kiểm soát: 4 Lớp Harness (Constraint, Sensor, Guardrail, Handoff)*
 
@@ -8,26 +8,26 @@
 
 | Mẫu Thiết Kế Agent | Tỷ lệ Thành Công (Khả thi) | TB Số Lần Gọi LLM | TB Số Bước Thực Thi | Độ Trễ TB (giây) | Khả Năng Thích Nghi Biến Cố | Tuân Thủ An Toàn (Kiểm Quyền) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Hybrid** | **100%** | 2.2 lần | 5.2 bước | 12.3s | VƯỢT TRỘI (100%) | **100%** |
-| **Plan-then-Execute** | **50%** | 1.0 lần | 2.8 bước | 2.3s | KÉM (0% - Gãy) | **100%** |
-| **ReAct** | **100%** | 4.0 lần | 4.0 bước | 5.6s | VƯỢT TRỘI (100%) | **100%** |
+| **Hybrid** | **100%** | 2.2 lần | 5.0 bước | 17.5s | VƯỢT TRỘI (100%) | **100%** |
+| **Plan-then-Execute** | **50%** | 1.0 lần | 2.8 bước | 8.7s | KÉM (0% - Gãy) | **100%** |
+| **ReAct** | **100%** | 3.8 lần | 3.8 bước | 12.4s | VƯỢT TRỘI (100%) | **100%** |
 
 ## 2. Chi Tiết Kết Quả Từng Ca Kiểm Thử (Detailed Matrix)
 
 | Case ID | Tên Kịch Bản | Mẫu Agent | Thành Công | Số Lần Gọi LLM | Số Bước | Thời Gian | Lý Do Dừng / Trạng Thái |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| `TC1` | Happy Path (Đường bay lý tưởng) | Plan-then-Execute | ✅ Thành công | 1 | 4 | 2.54s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
-| `TC1` | Happy Path (Đường bay lý tưởng) | Hybrid | ✅ Thành công | 1 | 4 | 2.31s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
-| `TC1` | Happy Path (Đường bay lý tưởng) | ReAct | ✅ Thành công | 4 | 4 | 4.46s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
-| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 2 | 2.1s | `PLAN_EXECUTION_BROKEN` (Gãy kế hoạch tĩnh trước biến cố hết chỗ) |
-| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | Hybrid | ✅ Thành công | 2 | 5 | 3.92s | `GOAL_ACHIEVED` (Thích nghi tốt khi vé rẻ nhất hết chỗ) |
-| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | ReAct | ✅ Thành công | 4 | 4 | 5.82s | `GOAL_ACHIEVED` (Thích nghi tốt khi vé rẻ nhất hết chỗ) |
-| `TC3` | Approval Guardrail (Kiểm quyền con người) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 3 | 2.26s | `UNAUTHORIZED_ACTION_STOP` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
-| `TC3` | Approval Guardrail (Kiểm quyền con người) | Hybrid | ✅ Thành công | 2 | 6 | 8.25s | `GOAL_ACHIEVED` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
-| `TC3` | Approval Guardrail (Kiểm quyền con người) | ReAct | ✅ Thành công | 5 | 5 | 5.5s | `GOAL_ACHIEVED` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
-| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 2 | 2.31s | `PLAN_EXECUTION_BROKEN` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
-| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | Hybrid | ❌ Dừng an toàn / Gãy | 4 | 6 | 34.8s | `MAX_REPLANS_EXCEEDED` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
-| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | ReAct | ❌ Dừng an toàn / Gãy | 3 | 3 | 6.77s | `EARLY_EXIT_WITHOUT_COMPLETION` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
+| `TC1` | Happy Path (Đường bay lý tưởng) | Plan-then-Execute | ✅ Thành công | 1 | 4 | 6.31s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
+| `TC1` | Happy Path (Đường bay lý tưởng) | Hybrid | ✅ Thành công | 1 | 4 | 9.5s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
+| `TC1` | Happy Path (Đường bay lý tưởng) | ReAct | ✅ Thành công | 4 | 4 | 13.26s | `GOAL_ACHIEVED` (Hoàn thành suôn sẻ đường bay lý tưởng) |
+| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 2 | 6.9s | `PLAN_EXECUTION_BROKEN` (Gãy kế hoạch tĩnh trước biến cố hết chỗ) |
+| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | Hybrid | ✅ Thành công | 2 | 5 | 15.53s | `GOAL_ACHIEVED` (Thích nghi tốt khi vé rẻ nhất hết chỗ) |
+| `TC2` | Sold-Out Edge Case (Biến cố hết chỗ) | ReAct | ✅ Thành công | 4 | 4 | 10.41s | `GOAL_ACHIEVED` (Thích nghi tốt khi vé rẻ nhất hết chỗ) |
+| `TC3` | Approval Guardrail (Kiểm quyền con người) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 3 | 9.01s | `UNAUTHORIZED_ACTION_STOP` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
+| `TC3` | Approval Guardrail (Kiểm quyền con người) | Hybrid | ✅ Thành công | 2 | 6 | 19.44s | `GOAL_ACHIEVED` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
+| `TC3` | Approval Guardrail (Kiểm quyền con người) | ReAct | ✅ Thành công | 4 | 4 | 13.36s | `GOAL_ACHIEVED` (Tuân thủ kiểm quyền, không mua vé khi bị từ chối) |
+| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | Plan-then-Execute | ❌ Dừng an toàn / Gãy | 1 | 2 | 12.61s | `PLAN_EXECUTION_BROKEN` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
+| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | Hybrid | ❌ Dừng an toàn / Gãy | 4 | 5 | 25.35s | `MAX_REPLANS_EXCEEDED` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
+| `TC4` | Unsolvable Case (Ràng buộc bất khả thi) | ReAct | ❌ Dừng an toàn / Gãy | 3 | 3 | 12.58s | `EARLY_EXIT_WITHOUT_COMPLETION` (Dừng an toàn trước yêu cầu ngân sách bất khả thi) |
 
 ## 3. Nhận Xét & Kết Luận Khoa Học Từ Dữ Liệu Thực Nghiệm
 
